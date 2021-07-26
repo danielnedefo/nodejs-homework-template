@@ -1,32 +1,44 @@
-const User = require("../../schema");
+const jwt = require('jsonwebtoken')
+require('dotenv').config()
+
+const { users: service } = require('../../services')
 
 const register = async (req, res, next) => {
-  const { email } = req.body;
-  try {
-    const user = User.findOne(email);
-    if (user) {
-      res.status(409).json({
-        status: "success",
-        code: 409,
-        message: "already register",
-      });
-    }
-    const { password, ...data } = req.body;
-    const newUser = new User(data);
-    newUser.setPassword(password);
-    await newUser.save();
-    const { password: pass, ...result } = newUser;
-    res.status(201).json({
-      status: "success",
-      code: 201,
-      message: "Successfuly create",
-      data: {
-        result,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+    const { email, password } = req.body
+    try {
+        const result = await service.getOne({ email })
+        if (result) {
+            return res.status(409).json({
+                status: 'error',
+                code: 409,
+                message: 'This user is already registered'
+            })
+        }
 
-module.exports = register;
+        const data = await service.add({ email, password })
+        const { TOKEN_KEY } = process.env
+        const payload = {
+            id: data._id
+        }
+        const token = jwt.sign(payload, TOKEN_KEY)
+
+        res.status(201).json({
+            status: 'success',
+            code: 201,
+            message: 'User is successfully added',
+            data: {
+                token,
+                user: {
+                    email,
+                    subscription: 'starter',
+                    avatar: data.avatar
+                }
+            }
+        })
+    }
+    catch (error) {
+        next(error)
+    }
+}
+
+module.exports = register

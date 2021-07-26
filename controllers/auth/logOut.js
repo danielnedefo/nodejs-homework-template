@@ -1,16 +1,18 @@
-const User = require("../../schema")
+const { users: service } = require('../../services')
 
-const logOut = async (req, res, next) => {
-  const { _id } = req.user
-  try {
-    await User.findByIdAndUpdate(_id, { ...req.user, token: null })
-    res.json({
-      status: "success",
-      code: 200,
-      message: "Logout success",
-    })
-  } catch (error) {
-    next(error)
-  }
+const logout = async (req, res, next) => {
+    const { user } = req
+    try {
+        await service.updateToken(user._id, { token: null })
+        res.status(204).json({
+            status: 'success',
+            code: 204,
+            message: 'Successful logout'
+        })
+    }
+    catch (error) {
+        next(error)
+    }
 }
-module.exports = logOut
+
+module.exports = logout
