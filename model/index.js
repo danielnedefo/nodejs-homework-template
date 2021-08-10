@@ -1,107 +1,103 @@
 const fs = require("fs/promises");
 const { v4 } = require("uuid");
-const contacts = require("./contacts.json");
-const Joi = require('joi')
+const Joi = require("joi");
+const Contact = require("../schema");
+
 
 const contactSchema = Joi.object({
-  email:Joi.string().email().required(),
-  name:Joi.string().required(),
-  phone:Joi.string().min(13).required()
-})
+  email: Joi.string().email().required(),
+  name: Joi.string().required(),
+  phone: Joi.string().min(13).required(),
+});
 
 const listContacts = async (req, res, next) => {
-  res.json({
-    status: "success",
-    code: 200,
-    data: {
-      result: contacts,
-    },
-  });
+  const {query} = req
+  try {
+    const contacts = await Contact.find(query)
+    res.json({
+      status: "success",
+      code: 200,
+      data: {
+        result: contacts,
+      },
+    });
+  } catch (error) {
+    next(error)
+  }
 };
 
 const getContactById = async (req, res, next) => {
   const { id } = req.params;
-  const result = contacts.find((elem) => elem.id === id);
-  if (!result | error) {
-    return res.status(404).json({
-      status: "Error",
-      code: 404,
-      message: "Product not found",
-    });
-  }
-  res.json({
-    status: "success",
-    code: 200,
-    data: {
-      result,
-    },
-  });
-};
-
-const removeContact = (req, res, next) => {
-  const { id } = req.params;
-  const idx = contacts.findIndex((elem) => elem.id === id);
-  if (idx === -1) {
-    return res.status(404).json({
-      status: "Error",
-      code: 404,
-      message: "Product not found",
-    });
-  }
-  contacts.splice(idx, 1);
-  res.status(204).json({
-    status: "success",
-    code: 204,
-  });
-};
-
-const addContact = (req, res, next) => {
-  const newContact = req.body;
-  const {error} = contactSchema(newContact)
-  if (error) {
-    return res.status(400).json({
-      status: "Error",
-      code: 400,
-      message: "Missing email or phone or name",
-    });
-  }
-  res.json({
-    status: "success",
-    code: 200,
-    data: {
-      result: newContact,
-    },
-  });
-};
-
-const updateContact = (req, res, next) => {
-  const { id } = req.params;
-  const updatedProduct = req.body;
-  const {error} = contactSchema(updatedProduct)
-  const idx = contacts.findIndex((elem) => elem.id === id);
-  if (idx === -1) {
-    return res.status(404).json({
-      status: "error",
-      code: 404,
-      message: "Product not found",
-    });
-  }
-  if(error){
-    return res.status(400).json({
-      status:"error",
-      code:400,
-      message:"Missing name or email or phone",
-    })
-  }
-  contacts[idx] = updateContact
-  res.json({
-    status:"success",
-    code:200,
-    body:{
-      result:updatedProduct
+  try {
+    const getById = Contact.findById(id)
+    if (!result | error) {
+      return res.status(404).json({
+        status: "Error",
+        code: 404,
+        message: "Product not found",
+      });
     }
-  })
+    res.json({
+      status: "success",
+      code: 200,
+      data: {
+        result:getById
+      },
+    });
+  } catch (error) {
+    next(error)
+  }  
 };
+
+const removeContact = async (req, res, next) => {
+  const { id } = req.params;
+  try { 
+    await Contact.findByIdAndDelete(id)
+    res.status(204).json({
+      status: "success",
+      code: 204,
+    });
+  } catch (error) {
+    next(error)
+  }  
+};
+
+const addContact = async (req, res, next) => {
+  const {body} = req
+  try {
+    const contact = await Contact.find(body)
+    if(contact){
+      throw new Error("Such contact already exist")
+    }
+    res.json({
+      status: "success",
+      code: 200,
+      data: {
+        result: body,
+      },
+    });
+    return Contact.create(body)
+  } catch (error) {
+    next(error)
+  }
+};
+
+const updateContact = async (req, res, next) => {
+  const {params:{id},body} = req
+  try {
+    const updatedContact = Contact.findByIdAndUpdate(id,body)
+    res.json({
+      status: "success",
+      code: 200,
+      body: {
+        result: updatedContact,
+      },
+    });
+  } catch (error) {
+    next(error)
+  }
+};
+
 
 module.exports = {
   listContacts,
